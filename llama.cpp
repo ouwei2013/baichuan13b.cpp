@@ -394,6 +394,10 @@ struct llama_context {
     }
 };
 
+
+
+
+
 template <typename T>
 static T checked_mul(T a, T b) {
     T ret = a * b;
@@ -451,6 +455,10 @@ enum llama_file_version {
     LLAMA_FILE_VERSION_GGJT_V2, // changed quantization format
     LLAMA_FILE_VERSION_GGJT_V3, // changed Q4 and Q8 quantization format
 };
+
+
+
+
 
 struct llama_file_loader {
     llama_file file;
@@ -564,6 +572,17 @@ struct llama_file_loader {
     }
 };
 
+
+
+
+
+
+
+
+
+
+
+
 struct llama_file_saver {
     llama_file file;
     llama_file_loader * any_file_loader;
@@ -627,6 +646,9 @@ struct llama_file_saver {
         file.write_raw(new_data, new_size);
     }
 };
+
+
+
 
 struct llama_model_loader {
     std::unique_ptr<llama_file_loader> file_loader;
@@ -791,6 +813,8 @@ struct llama_model_loader {
 // kv cache
 //
 
+
+
 static bool kv_cache_init(
         const struct llama_hparams & hparams,
              struct llama_kv_cache & cache,
@@ -836,6 +860,8 @@ static bool kv_cache_init(
     return true;
 }
 
+
+
 struct llama_context_params llama_context_default_params() {
     struct llama_context_params result = {
         /*.seed                        =*/ LLAMA_DEFAULT_SEED,
@@ -858,6 +884,8 @@ struct llama_context_params llama_context_default_params() {
     return result;
 }
 
+
+
 struct llama_model_quantize_params llama_model_quantize_default_params() {
     struct llama_model_quantize_params result = {
         /*.nthread                     =*/ 0,
@@ -868,6 +896,8 @@ struct llama_model_quantize_params llama_model_quantize_default_params() {
 
     return result;
 }
+
+
 
 bool llama_mmap_supported() {
     return llama_mmap::SUPPORTED;
@@ -922,6 +952,8 @@ static const char *llama_file_version_name(llama_file_version version) {
     return "unknown";
 }
 
+
+
 static const char *llama_ftype_name(enum llama_ftype ftype) {
     switch (ftype) {
         case LLAMA_FTYPE_ALL_F32:     return "all F32";
@@ -947,6 +979,8 @@ static const char *llama_ftype_name(enum llama_ftype ftype) {
     }
 }
 
+
+
 static const char *llama_model_type_name(e_model type) {
     switch (type) {
         case MODEL_3B: return "3B";
@@ -957,6 +991,8 @@ static const char *llama_model_type_name(e_model type) {
         default: LLAMA_ASSERT(false);
     }
 }
+
+
 
 static void llama_model_load_internal(
         const std::string & fname,
@@ -1262,6 +1298,10 @@ static void llama_model_load_internal(
     model.t_load_us = ggml_time_us() - model.t_start_us;
 }
 
+
+
+
+
 static bool llama_model_load(
         const std::string & fname,
         llama_model & model,
@@ -1428,15 +1468,20 @@ static bool llama_eval_internal(
             offload_func_kq(tmpq);
             ggml_set_name(tmpq, "tmpq");
 
-            struct ggml_tensor * Kcur = ggml_rope_inplace(ctx0, ggml_reshape_3d(ctx0, tmpk, n_embd/n_head, n_head, N), n_past, n_rot, 0, 0);
+
+            //struct ggml_tensor * Kcur = ggml_rope_inplace(ctx0, ggml_reshape_3d(ctx0, tmpk, n_embd/n_head, n_head, N), //n_past, n_rot, 0, 0);
+            struct ggml_tensor * Kcur  = ggml_reshape_3d(ctx0, tmpk, n_embd/n_head, n_head, N);
             offload_func_kq(Kcur);
             ggml_set_name(Kcur, "Kcur");
 
-            struct ggml_tensor * Qcur = ggml_rope_inplace(ctx0, ggml_reshape_3d(ctx0, tmpq, n_embd/n_head, n_head, N), n_past, n_rot, 0, 0);
+            //struct ggml_tensor * Qcur = ggml_rope_inplace(ctx0, ggml_reshape_3d(ctx0, tmpq, n_embd/n_head, n_head, N), ////////n_past, n_rot, 0, 0);
+            struct ggml_tensor * Qcur = ggml_reshape_3d(ctx0, tmpq, n_embd/n_head, n_head, N);
             offload_func_kq(Qcur);
             ggml_set_name(Qcur, "Qcur");
 
             // store key and value to memory
+            
+
             {
                 // compute the transposed [N, n_embd] V matrix
 
@@ -1492,9 +1537,15 @@ static bool llama_eval_internal(
             struct ggml_tensor * KQ_scaled = ggml_scale_inplace(ctx0, KQ, KQ_scale);
             offload_func_kq(KQ_scaled);
             ggml_set_name(KQ_scaled, "KQ_scaled");
+            // here add kq_scaled_alibi 
 
-            // KQ_masked = mask_past(KQ_scaled)
-            struct ggml_tensor * KQ_masked = ggml_diag_mask_inf_inplace(ctx0, KQ_scaled, n_past);
+            struct ggml_tensor * KQ_scaled_alibi =
+                ggml_alibi(ctx0, KQ_scaled, n_past, n_head, 8);
+            ggml_set_name(KQ_scaled_alibi, "KQ_scaled_alibi");
+
+
+            struct ggml_tensor * KQ_masked = ggml_diag_mask_inf(ctx0, KQ_scaled_alibi, n_past);
+            //struct ggml_tensor * KQ_masked = ggml_diag_mask_inf_inplace(ctx0, KQ_scaled, n_past);
             offload_func_kq(KQ_masked);
             ggml_set_name(KQ_masked, "KQ_masked");
 
