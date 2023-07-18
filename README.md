@@ -70,7 +70,7 @@ python3 ../convert.py ../models/Baichuan-13B-Chat/
 ./bin/quantize ./models/Baichuan-13B-Chat/ggml-model-f16.bin ./models/Baichuan-13B-Chat/ggml-model-q4_0.bin q4_0
 
 # ok let's run the model in its interactive model
-./bin/main -m ../../models/Baichuan-13B-Chat/ggml-model-q4_0.bin -p "User:" -i -r 'User:' -n 1024
+./bin/main -m ../../models/Baichuan-13B-Chat/ggml-model-q4_0.bin -p "User:" -i -r 'User:' -c 1024
 
 ```
 
